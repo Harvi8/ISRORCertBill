@@ -32,6 +32,7 @@ internal static class HealthRegistration
     {
         var certificationManager = services.GetService<CertificationManager>();
         var pingOptions = services.GetService<IOptions<NationPingServiceOptions>>()?.Value;
+        var pingState = services.GetService<NationPingRuntimeState>();
         var certificationOptions = services.GetService<IOptions<CertificationConfig>>()?.Value;
         var certificationIdentity = certificationManager?.Identity;
         var billingEnabled = configuration.RequiredBool("Features:Billing");
@@ -56,7 +57,9 @@ internal static class HealthRegistration
             new NationPingStatus(
                 nationPingEnabled,
                 nationPingEnabled ? pingOptions?.ListenAddress ?? configuration.RequiredString("NationPingService:ListenAddress") : configuration["NationPingService:ListenAddress"] ?? string.Empty,
-                nationPingEnabled ? pingOptions?.ListenPort ?? configuration.RequiredInt("NationPingService:ListenPort") : configuredNationPingPort),
+                nationPingEnabled ? pingOptions?.ListenPort ?? configuration.RequiredInt("NationPingService:ListenPort") : configuredNationPingPort,
+                nationPingEnabled && pingState?.Running == true,
+                pingState?.Error),
             new CertificationStatus(
                 certificationEnabled,
                 certificationIdentity is not null,
@@ -122,9 +125,17 @@ internal static class HealthRegistration
 
     private static void AppendNationPing(StringBuilder html, NationPingStatus nationPing)
     {
-        AppendSectionStart(html, "NationPing", nationPing.Enabled ? "Enabled" : "Disabled", nationPing.Enabled ? "on" : string.Empty);
+        var badgeText = nationPing.Enabled
+            ? nationPing.Running ? "Listening" : nationPing.Error is not null ? "Faulted" : "Starting"
+            : "Disabled";
+        var badgeClass = nationPing.Enabled
+            ? nationPing.Running ? "on" : "pending"
+            : string.Empty;
+
+        AppendSectionStart(html, "NationPing", badgeText, badgeClass);
         AppendRow(html, "Address", nationPing.ListenAddress);
         AppendRow(html, "Port", nationPing.ListenPort?.ToString() ?? string.Empty);
+        AppendRow(html, "Error", nationPing.Error ?? string.Empty);
         AppendSectionEnd(html);
     }
 
@@ -171,6 +182,6 @@ internal static class HealthRegistration
 
     private sealed record UnifiedStatus(BillingStatus Billing, NationPingStatus NationPing, CertificationStatus Certification);
     private sealed record BillingStatus(bool Enabled, string AuthService, string NotificationService, string Http);
-    private sealed record NationPingStatus(bool Enabled, string ListenAddress, int? ListenPort);
+    private sealed record NationPingStatus(bool Enabled, string ListenAddress, int? ListenPort, bool Running, string? Error);
     private sealed record CertificationStatus(bool Enabled, bool Refreshed, string Serializer, string? ListenAddress, int? ListenPort);
 }

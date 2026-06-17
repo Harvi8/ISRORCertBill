@@ -40,6 +40,7 @@ internal static class BillingRegistration
         if (configuration.RequiredBool("Features:NationPing"))
         {
             services.Configure<NationPingServiceOptions>(configuration.GetSection("NationPingService"));
+            services.AddSingleton<NationPingRuntimeState>();
             services.AddHostedService<NationPingService>();
         }
 

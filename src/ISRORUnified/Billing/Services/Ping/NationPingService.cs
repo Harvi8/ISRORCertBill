@@ -12,13 +12,18 @@ namespace ISRORBilling.Services.Ping
     {
         private readonly ILogger<NationPingService> _logger;
         readonly NationPingServiceOptions _options;
+        private readonly NationPingRuntimeState _runtimeState;
 
         private readonly TcpListener _tcpListener;
 
-        public NationPingService(ILogger<NationPingService> logger, IOptions<NationPingServiceOptions> options)
+        public NationPingService(
+            ILogger<NationPingService> logger,
+            IOptions<NationPingServiceOptions> options,
+            NationPingRuntimeState runtimeState)
         {
             _logger = logger;
             _options = options.Value;
+            _runtimeState = runtimeState;
 
             if (!IPAddress.TryParse(_options.ListenAddress, out var address))
                 address = Dns.GetHostEntry(_options.ListenAddress).AddressList.FirstOrDefault() ?? IPAddress.Loopback;
@@ -28,12 +33,35 @@ namespace ISRORBilling.Services.Ping
 
         protected override Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            _tcpListener.Start();
+            try
+            {
+                _tcpListener.Start();
+            }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
+            {
+                var error = $"Address already in use: {_options.ListenAddress}:{_options.ListenPort}";
+                _runtimeState.MarkFaulted(error);
+                _logger.LogError(
+                    ex,
+                    "NationPing service cannot listen on [{ListenAddress}:{ListenPort}] because the address/port is already in use. Change NationPingService:ListenPort or disable Features:NationPing. The host will continue without NationPing.",
+                    _options.ListenAddress,
+                    _options.ListenPort);
+
+                return Task.CompletedTask;
+            }
+
+            _runtimeState.MarkRunning();
             _logger.LogInformation(
                 "Ping Service listening on [{ServiceOptionsListenAddress}:{ServiceOptionsListenPort}]",
                 _options.ListenAddress, _options.ListenPort);
 
             return ProcessAccept(cancellationToken);
+        }
+
+        public override Task StopAsync(CancellationToken cancellationToken)
+        {
+            _runtimeState.MarkStopped();
+            return base.StopAsync(cancellationToken);
         }
 
         private async Task ProcessAccept(CancellationToken cancellationToken)

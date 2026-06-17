@@ -4,6 +4,8 @@ param(
     [int] $BillingPort = 18082,
     [int] $PingHttpPort = 18083,
     [int] $PingPort = 12990,
+    [int] $PingConflictHttpPort = 18086,
+    [int] $PingConflictPort = 12991,
     [int] $CertificationFailurePort = 18084,
     [int] $ConfigurationPort = 18085
 )
@@ -231,6 +233,10 @@ try {
         throw "NationPing TCP port $PingPort did not open."
     }
 
+    $status = Invoke-RestMethod -Uri "http://127.0.0.1:$PingHttpPort/status" -TimeoutSec 2
+    Assert-Equal $status.nationPing.enabled $true "NationPing enabled status mismatch."
+    Assert-Equal $status.nationPing.running $true "NationPing running status mismatch."
+
     try {
         $stream = $client.GetStream()
         $request = [byte[]]::new(14)
@@ -259,6 +265,25 @@ try {
 }
 finally {
     Stop-UnifiedHost $hostState
+}
+
+Write-Host "Checking NationPing port collision handling..."
+$listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Parse("127.0.0.1"), $PingConflictPort)
+$listener.Start()
+$hostState = Start-UnifiedHost `
+    -Name "ping-conflict" `
+    -Arguments "--Features:Billing=false --Features:Certification=false --Features:NationPing=true --NationPingService:ListenAddress=127.0.0.1 --NationPingService:ListenPort=$PingConflictPort --Kestrel:EndPoints:Http:Url=http://127.0.0.1:$PingConflictHttpPort"
+try {
+    Wait-ForHealth -Port $PingConflictHttpPort | Out-Null
+    $status = Invoke-RestMethod -Uri "http://127.0.0.1:$PingConflictHttpPort/status" -TimeoutSec 2
+
+    Assert-Equal $status.nationPing.enabled $true "NationPing conflict enabled status mismatch."
+    Assert-Equal $status.nationPing.running $false "NationPing conflict running status mismatch."
+    Assert-Contains $status.nationPing.error "Address already in use" "NationPing conflict error mismatch."
+}
+finally {
+    Stop-UnifiedHost $hostState
+    $listener.Stop()
 }
 
 Write-Host "Checking certification database failure status..."

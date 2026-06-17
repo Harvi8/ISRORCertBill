@@ -135,13 +135,18 @@ Assert-DirectoryMirror `
 Assert-DirectoryMirror `
     -SourceDir (Join-Path $billingSourcePath "Models") `
     -DestinationDir (Join-Path $unifiedRootPath "Billing\Models") `
-    -ExcludedRelatives @("Authentication/CheckUserRequest.cs", "Ping/NationPingServiceOptions.cs")
+    -ExcludedRelatives @(
+        "Authentication/CheckUserRequest.cs",
+        "Ping/NationPingRuntimeState.cs",
+        "Ping/NationPingServiceOptions.cs"
+    )
 Assert-DirectoryMirror `
     -SourceDir (Join-Path $billingSourcePath "Services") `
     -DestinationDir (Join-Path $unifiedRootPath "Billing\Services") `
     -ExcludedRelatives @(
         "Authentication/IAuthService.cs",
-        "Notification/CommunityProvided/FerreNotificationService.cs"
+        "Notification/CommunityProvided/FerreNotificationService.cs",
+        "Ping/NationPingService.cs"
     )
 
 Write-Host "Checking copied certification source..."
@@ -266,6 +271,23 @@ Assert-RequiredStrings $nationPingOptionsPath @(
     "public int ListenPort { get; set; }"
 )
 
+$nationPingRuntimeStatePath = Join-Path $unifiedRootPath "Billing\Models\Ping\NationPingRuntimeState.cs"
+Assert-RequiredStrings $nationPingRuntimeStatePath @(
+    "public bool Running",
+    "public string? Error",
+    "public void MarkFaulted(string error)"
+)
+
+$nationPingServicePath = Join-Path $unifiedRootPath "Billing\Services\Ping\NationPingService.cs"
+Assert-RequiredStrings $nationPingServicePath @(
+    "NationPingRuntimeState runtimeState",
+    "SocketError.AddressAlreadyInUse",
+    "The host will continue without NationPing",
+    "_runtimeState.MarkFaulted(error)",
+    "_runtimeState.MarkRunning()",
+    "_runtimeState.MarkStopped()"
+)
+
 $checkUserRequestPath = Join-Path $unifiedRootPath "Billing\Models\Authentication\CheckUserRequest.cs"
 Assert-RequiredStrings $checkUserRequestPath @(
     "public CheckUserRequest(string values, string? saltKey, int serviceCompany, int requestTimeout)"
@@ -319,6 +341,7 @@ Assert-RequiredStrings $billingRegistrationPath @(
     "/Property/Silkroad-r/checkuser.aspx",
     "/cgi/EmailPassword.asp",
     "/cgi/Email_Certification.asp",
+    "AddSingleton<NationPingRuntimeState>",
     "AddHostedService<NationPingService>",
     "NotificationServiceType.Email",
     "NotificationServiceType.Ferre",
@@ -359,8 +382,18 @@ Assert-RequiredStrings $healthPath @(
     "/status",
     "AuthService",
     "NotificationService",
+    "NationPingRuntimeState",
+    "bool Running",
+    "string? Error",
     "Serializer",
     "Refreshed"
+)
+
+$smokeTestPath = "scripts\SmokeTest.ps1"
+Assert-RequiredStrings $smokeTestPath @(
+    "Checking NationPing port collision handling",
+    "NationPing conflict running status mismatch",
+    "Address already in use"
 )
 
 $projectPath = Join-Path $unifiedRootPath "ISRORUnified.csproj"
