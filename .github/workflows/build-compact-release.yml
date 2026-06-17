@@ -1,0 +1,94 @@
+name: Build compact release
+
+on:
+  workflow_dispatch:
+    inputs:
+      runtime:
+        description: Runtime identifier to publish.
+        required: true
+        default: win-x64
+        type: choice
+        options:
+          - win-x64
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build compact self-contained release
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve release settings
+        id: settings
+        run: |
+          $runtime = "${{ github.event.inputs.runtime }}"
+          if ([string]::IsNullOrWhiteSpace($runtime)) {
+            $runtime = "win-x64"
+          }
+
+          $publishPath = "artifacts/publish/$runtime"
+          $releasePath = "artifacts/release"
+          $zipName = "ISRORUnified-$runtime.zip"
+          $zipPath = Join-Path $releasePath $zipName
+
+          "runtime=$runtime" >> $env:GITHUB_OUTPUT
+          "publish_path=$publishPath" >> $env:GITHUB_OUTPUT
+          "release_path=$releasePath" >> $env:GITHUB_OUTPUT
+          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+          "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore src/ISRORUnified/ISRORUnified.csproj
+
+      - name: Publish compact self-contained app
+        run: |
+          ./scripts/Publish.ps1 `
+            -ProjectPath src/ISRORUnified/ISRORUnified.csproj `
+            -Configuration Release `
+            -Runtime "${{ steps.settings.outputs.runtime }}" `
+            -OutputPath "${{ steps.settings.outputs.publish_path }}" `
+            -SelfContained `
+            -OverwriteAppSettings `
+            -ReleaseZip `
+            -ReleasePath "${{ steps.settings.outputs.release_path }}" `
+            -ReleaseFileName "${{ steps.settings.outputs.zip_name }}"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.settings.outputs.zip_name }}
+          path: ${{ steps.settings.outputs.zip_path }}
+          if-no-files-found: error
+
+      - name: Attach asset to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $zipPath = "${{ steps.settings.outputs.zip_path }}"
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $zipPath --clobber
+          }
+          else {
+            gh release create $tag $zipPath --title "ISRORUnified $tag" --notes "Compact self-contained Windows release."
+          }
