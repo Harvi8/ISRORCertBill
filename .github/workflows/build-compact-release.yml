@@ -17,6 +17,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: compact-release
+  cancel-in-progress: false
+
 jobs:
   build-release:
     name: Build compact self-contained release
@@ -29,6 +33,9 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -43,12 +50,49 @@ jobs:
             $runtime = "win-x64"
           }
 
+          if ($env:GITHUB_REF -like "refs/tags/v*") {
+            $releaseTag = $env:GITHUB_REF_NAME
+          }
+          else {
+            git fetch --tags --force
+
+            $versions = git tag --list "v[0-9]*.[0-9]" |
+              ForEach-Object {
+                if ($_ -match '^v(?<major>\d+)\.(?<minor>\d)$') {
+                  [pscustomobject]@{
+                    Tag = $_
+                    Major = [int]$Matches.major
+                    Minor = [int]$Matches.minor
+                    Sort = ([int]$Matches.major * 10) + [int]$Matches.minor
+                  }
+                }
+              } |
+              Sort-Object Sort -Descending
+
+            if (-not $versions) {
+              $nextMajor = 0
+              $nextMinor = 1
+            }
+            else {
+              $latest = $versions | Select-Object -First 1
+              $nextMajor = $latest.Major
+              $nextMinor = $latest.Minor + 1
+              if ($nextMinor -gt 9) {
+                $nextMajor += 1
+                $nextMinor = 0
+              }
+            }
+
+            $releaseTag = "v$nextMajor.$nextMinor"
+          }
+
           $publishPath = "artifacts/publish/$runtime"
           $releasePath = "artifacts/release"
-          $zipName = "ISRORUnified-$runtime.zip"
+          $zipName = "ISRORUnified-$releaseTag-$runtime.zip"
           $zipPath = Join-Path $releasePath $zipName
 
           "runtime=$runtime" >> $env:GITHUB_OUTPUT
+          "release_tag=$releaseTag" >> $env:GITHUB_OUTPUT
           "publish_path=$publishPath" >> $env:GITHUB_OUTPUT
           "release_path=$releasePath" >> $env:GITHUB_OUTPUT
           "zip_name=$zipName" >> $env:GITHUB_OUTPUT
@@ -77,18 +121,21 @@ jobs:
           path: ${{ steps.settings.outputs.zip_path }}
           if-no-files-found: error
 
-      - name: Attach asset to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = $env:GITHUB_REF_NAME
+          $tag = "${{ steps.settings.outputs.release_tag }}"
           $zipPath = "${{ steps.settings.outputs.zip_path }}"
+          $releaseNotes = "Compact self-contained Windows release."
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $zipPath --clobber
           }
+          elseif ($env:GITHUB_REF -like "refs/tags/v*") {
+            gh release create $tag $zipPath --title "ISRORUnified $tag" --notes $releaseNotes
+          }
           else {
-            gh release create $tag $zipPath --title "ISRORUnified $tag" --notes "Compact self-contained Windows release."
+            gh release create $tag $zipPath --target $env:GITHUB_SHA --title "ISRORUnified $tag" --notes $releaseNotes
           }

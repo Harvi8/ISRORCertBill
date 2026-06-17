@@ -297,10 +297,20 @@ Assert-RequiredStrings $publishScriptPath @(
 
 $compactReleaseWorkflowPath = ".github\workflows\build-compact-release.yml"
 Assert-RequiredStrings $compactReleaseWorkflowPath @(
+    "group: compact-release",
+    "cancel-in-progress: false",
     "uses: actions/checkout@v6",
+    "fetch-depth: 0",
+    "fetch-tags: true",
     "uses: actions/setup-dotnet@v5",
     "uses: actions/upload-artifact@v7",
-    "-ReleaseZip"
+    "-ReleaseZip",
+    '$releaseTag = "v$nextMajor.$nextMinor"',
+    '$nextMinor -gt 9',
+    '$nextMinor = 0',
+    '"release_tag=$releaseTag"',
+    '$zipName = "ISRORUnified-$releaseTag-$runtime.zip"',
+    'gh release create $tag $zipPath --target $env:GITHUB_SHA'
 )
 
 Write-Host "Checking unified registrations and routes..."

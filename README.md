@@ -107,6 +107,8 @@ artifacts/publish/win-x64/
 
 That bundle includes `ISRORUnified.exe`, `appsettings.json`, `Database/`, and `Patches/`.
 
+The `Build compact release` GitHub Actions workflow creates a compact self-contained release zip using the same publish script. Manual workflow runs create the next release tag automatically, starting at `v0.1`, then `v0.2` through `v0.9`, then `v1.0`. Manually pushed `v*` tags are still supported and use the tag that was pushed.
+
 ## Network Surfaces
 
 - Billing HTTP: configured by `Kestrel:EndPoints:Http:Url`, default `http://0.0.0.0:18080`
