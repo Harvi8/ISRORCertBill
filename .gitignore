@@ -1,6 +1,35 @@
+# Build output
 bin/
 obj/
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# Visual Studio and IDE state
+.vs/
+*.user
+*.suo
+*.rsuser
+*.userosscache
+*.sln.docstates
+.idea/
+.vscode/
+
+# Logs and runtime output
 *.log
 UnifiedLog*.txt
 BillingLog*.txt
+
+# Test and package output
+TestResults/
+[Bb]uild[Ll]og.*
+*.pdb
+*.nupkg
+packages/
+
+# Publish output
 artifacts/
+publish/

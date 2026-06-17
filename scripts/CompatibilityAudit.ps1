@@ -139,7 +139,10 @@ Assert-DirectoryMirror `
 Assert-DirectoryMirror `
     -SourceDir (Join-Path $billingSourcePath "Services") `
     -DestinationDir (Join-Path $unifiedRootPath "Billing\Services") `
-    -ExcludedRelatives @("Authentication/IAuthService.cs")
+    -ExcludedRelatives @(
+        "Authentication/IAuthService.cs",
+        "Notification/CommunityProvided/FerreNotificationService.cs"
+    )
 
 Write-Host "Checking copied certification source..."
 Assert-DirectoryMirror `
@@ -218,6 +221,15 @@ Assert-RequiredStrings $authServicePath @(
     "requires a complete gateway request"
 )
 Assert-TextNotContains $authServicePath 'new CheckUserRequest($"{channel}|{userId}|{userPw}")'
+
+$ferreNotificationServicePath = Join-Path $unifiedRootPath "Billing\Services\Notification\CommunityProvided\FerreNotificationService.cs"
+Assert-RequiredStrings $ferreNotificationServicePath @(
+    "SqlQueryRaw<int?>",
+    "new SqlParameter(",
+    "request.jid, request.email, request.code"
+)
+Assert-TextNotContains $ferreNotificationServicePath 'SqlQuery<int?>($"EXEC'
+Assert-TextNotContains $ferreNotificationServicePath "request.jid.ToString()"
 
 Write-Host "Checking unified registrations and routes..."
 $billingRegistrationPath = Join-Path $unifiedRootPath "Infrastructure\ServiceRegistration\BillingRegistration.cs"

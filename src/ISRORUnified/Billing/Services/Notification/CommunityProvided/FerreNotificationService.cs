@@ -1,6 +1,7 @@
 using ISRORBilling.Database;
 using ISRORBilling.Models.Authentication;
 using ISRORBilling.Models.Notification;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace ISRORBilling.Services.Notification.CommunityProvided;
@@ -19,15 +20,23 @@ public class FerreNotificationService : INotificationService
         _logger = logger;
     }
     
-    private int UpdateLockPw(string JID, string Email,string LockPW) =>
+    private int UpdateLockPw(int jid, string email, string lockPw) =>
         _accountContext.Database
-            .SqlQuery<int?>($"EXEC Update_ItemLock @jid = {JID}, @email = {Email}, @lockPw = {LockPW}")
+            .SqlQueryRaw<int?>(
+                "EXEC Update_ItemLock @jid = @JID, @email = @Email, @lockPw = @LockPw",
+                new SqlParameter("@JID", jid),
+                new SqlParameter("@Email", email),
+                new SqlParameter("@LockPw", lockPw))
             .AsEnumerable().FirstOrDefault() ?? -1;
 
-    private int UpdatesecondaryPw(string JID, string Email, string SecPassWord) =>
-    _accountContext.Database
-        .SqlQuery<int?>($"EXEC Update_SecPassWord @jid = {JID}, @email = {Email}, @SecPassWord = {SecPassWord}")
-        .AsEnumerable().FirstOrDefault() ?? -1;
+    private int UpdatesecondaryPw(int jid, string email, string secPassWord) =>
+        _accountContext.Database
+            .SqlQueryRaw<int?>(
+                "EXEC Update_SecPassWord @jid = @JID, @email = @Email, @SecPassWord = @SecPassWord",
+                new SqlParameter("@JID", jid),
+                new SqlParameter("@Email", email),
+                new SqlParameter("@SecPassWord", secPassWord))
+            .AsEnumerable().FirstOrDefault() ?? -1;
 
     public Task<bool> SendSecondPassword(SendCodeRequest request)
     {
@@ -37,7 +46,7 @@ public class FerreNotificationService : INotificationService
             return Task.FromResult(false);
         }
         
-        if (UpdatesecondaryPw(request.jid.ToString(), request.email, request.code) >= 0)
+        if (UpdatesecondaryPw(request.jid, request.email, request.code) >= 0)
             return Task.FromResult(true);
 
         _logger.LogError("Sending second password by email has Failed for [{StrEmail}]", request.email);
@@ -52,7 +61,7 @@ public class FerreNotificationService : INotificationService
             return Task.FromResult(false);
         }
 
-        if(UpdateLockPw(request.jid.ToString(), request.email,request.code) >= 0) 
+        if(UpdateLockPw(request.jid, request.email, request.code) >= 0) 
             return Task.FromResult(true);
         
         _logger.LogError("Sending Item Lock Key has failed for [{RequestEmail}]", request.email);
