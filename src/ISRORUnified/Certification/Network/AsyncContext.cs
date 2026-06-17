@@ -6,9 +6,9 @@ namespace ISRORCert.Network
 {
     public class AsyncContext
     {
-        public AsyncState State { get; init; }
+        public AsyncState State { get; init; } = null!;
         public Guid Guid { get; }
-        public IAsyncInterface Interface { get; set; }
+        public IAsyncInterface Interface { get; set; } = null!;
         public Security Security { get; set; }
         public bool Connected { get; set; }
 

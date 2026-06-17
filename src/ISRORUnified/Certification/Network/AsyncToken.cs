@@ -4,7 +4,7 @@ namespace ISRORCert.Network
 {
     public class AsyncToken
     {
-        public Socket Socket { get; set; }
-        public IAsyncInterface Interface { get; set; }
+        public Socket Socket { get; set; } = null!;
+        public IAsyncInterface Interface { get; set; } = null!;
     }
 }

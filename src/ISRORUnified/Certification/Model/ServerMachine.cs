@@ -32,7 +32,7 @@ namespace ISRORCert.Model
 
         public string GetIP(ServerCordBindType bindType) => bindType == ServerCordBindType.Public ? PublicIP : PrivateIP;
 
-        public IPAddress GetIPAddress(ServerCordBindType bindType) => bindType == ServerCordBindType.Public ? PublicIPAddress : PrivateIPAddress;
+        public IPAddress? GetIPAddress(ServerCordBindType bindType) => bindType == ServerCordBindType.Public ? PublicIPAddress : PrivateIPAddress;
 
 
     }

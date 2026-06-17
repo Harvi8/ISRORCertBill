@@ -151,13 +151,23 @@ Assert-DirectoryMirror `
     -ExcludedRelatives @("SqlDbAdapter.cs")
 Assert-DirectoryMirror `
     -SourceDir (Join-Path $certificationSourcePath "src\ISRORCert\Logic") `
-    -DestinationDir (Join-Path $unifiedRootPath "Certification\Logic")
+    -DestinationDir (Join-Path $unifiedRootPath "Certification\Logic") `
+    -ExcludedRelatives @("CertificationNetworkInterface.cs")
 Assert-DirectoryMirror `
     -SourceDir (Join-Path $certificationSourcePath "src\ISRORCert\Model") `
-    -DestinationDir (Join-Path $unifiedRootPath "Certification\Model")
+    -DestinationDir (Join-Path $unifiedRootPath "Certification\Model") `
+    -ExcludedRelatives @("ServerMachine.cs")
 Assert-DirectoryMirror `
     -SourceDir (Join-Path $certificationSourcePath "src\ISRORCert\Network") `
-    -DestinationDir (Join-Path $unifiedRootPath "Certification\Network")
+    -DestinationDir (Join-Path $unifiedRootPath "Certification\Network") `
+    -ExcludedRelatives @(
+        "AsyncClient.cs",
+        "AsyncContext.cs",
+        "AsyncServer.cs",
+        "AsyncState.cs",
+        "AsyncToken.cs",
+        "IAsyncInterface.cs"
+    )
 Assert-DirectoryMirror `
     -SourceDir (Join-Path $certificationSourcePath "src\ISRORCert\Services") `
     -DestinationDir (Join-Path $unifiedRootPath "Certification\Services") `
@@ -203,6 +213,53 @@ Assert-RequiredStrings $tickServicePath @(
     "PeriodicTimer"
 )
 
+$certificationInterfacePath = Join-Path $unifiedRootPath "Certification\Logic\CertificationNetworkInterface.cs"
+Assert-RequiredStrings $certificationInterfacePath @(
+    "public void OnError(AsyncContext? context)"
+)
+
+$serverMachinePath = Join-Path $unifiedRootPath "Certification\Model\ServerMachine.cs"
+Assert-RequiredStrings $serverMachinePath @(
+    "public IPAddress? GetIPAddress"
+)
+
+$asyncClientPath = Join-Path $unifiedRootPath "Certification\Network\AsyncClient.cs"
+Assert-RequiredStrings $asyncClientPath @(
+    "if (!IPAddress.TryParse(host, out var address))",
+    "object? sender",
+    "Missing async client token"
+)
+
+$asyncServerPath = Join-Path $unifiedRootPath "Certification\Network\AsyncServer.cs"
+Assert-RequiredStrings $asyncServerPath @(
+    "private void DispatchAccept(object? param)",
+    "object? sender",
+    "Missing async server token"
+)
+
+$asyncStatePath = Join-Path $unifiedRootPath "Certification\Network\AsyncState.cs"
+Assert-RequiredStrings $asyncStatePath @(
+    "e.UserToken is not AsyncState state",
+    "if (m_current_write_buffer == null)"
+)
+
+$asyncContextPath = Join-Path $unifiedRootPath "Certification\Network\AsyncContext.cs"
+Assert-RequiredStrings $asyncContextPath @(
+    "public AsyncState State { get; init; } = null!;",
+    "public IAsyncInterface Interface { get; set; } = null!;"
+)
+
+$asyncTokenPath = Join-Path $unifiedRootPath "Certification\Network\AsyncToken.cs"
+Assert-RequiredStrings $asyncTokenPath @(
+    "public Socket Socket { get; set; } = null!;",
+    "public IAsyncInterface Interface { get; set; } = null!;"
+)
+
+$asyncInterfacePath = Join-Path $unifiedRootPath "Certification\Network\IAsyncInterface.cs"
+Assert-RequiredStrings $asyncInterfacePath @(
+    "void OnError(AsyncContext? context);"
+)
+
 $nationPingOptionsPath = Join-Path $unifiedRootPath "Billing\Models\Ping\NationPingServiceOptions.cs"
 Assert-RequiredStrings $nationPingOptionsPath @(
     "public string ListenAddress { get; set; } = default!;",
@@ -230,6 +287,21 @@ Assert-RequiredStrings $ferreNotificationServicePath @(
 )
 Assert-TextNotContains $ferreNotificationServicePath 'SqlQuery<int?>($"EXEC'
 Assert-TextNotContains $ferreNotificationServicePath "request.jid.ToString()"
+
+$publishScriptPath = "scripts\Publish.ps1"
+Assert-RequiredStrings $publishScriptPath @(
+    "-ReleaseZip",
+    "/p:NoWarn=CS8600%3BCS8602%3BCS8603%3BCS8618%3BCS8625",
+    "Release zip complete"
+)
+
+$compactReleaseWorkflowPath = ".github\workflows\build-compact-release.yml"
+Assert-RequiredStrings $compactReleaseWorkflowPath @(
+    "uses: actions/checkout@v6",
+    "uses: actions/setup-dotnet@v5",
+    "uses: actions/upload-artifact@v7",
+    "-ReleaseZip"
+)
 
 Write-Host "Checking unified registrations and routes..."
 $billingRegistrationPath = Join-Path $unifiedRootPath "Infrastructure\ServiceRegistration\BillingRegistration.cs"

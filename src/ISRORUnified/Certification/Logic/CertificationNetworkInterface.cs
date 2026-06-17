@@ -78,7 +78,7 @@ namespace ISRORCert.Logic
             _logger.LogInformation($"Disconnected: {context.Guid}");
         }
 
-        public void OnError(AsyncContext context)
+        public void OnError(AsyncContext? context)
         {
             if (context == null)
                 return;

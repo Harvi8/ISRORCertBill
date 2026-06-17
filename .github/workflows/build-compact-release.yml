@@ -28,10 +28,10 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 8.0.x
 
@@ -71,7 +71,7 @@ jobs:
             -ReleaseFileName "${{ steps.settings.outputs.zip_name }}"
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.settings.outputs.zip_name }}
           path: ${{ steps.settings.outputs.zip_path }}

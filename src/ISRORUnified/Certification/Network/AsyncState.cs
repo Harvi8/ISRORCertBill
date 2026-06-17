@@ -93,7 +93,11 @@ namespace ISRORCert.Network
 
         private void ProcessSend(SocketAsyncEventArgs e)
         {
-            AsyncState state = e.UserToken as AsyncState;
+            if (e.UserToken is not AsyncState state)
+            {
+                m_server.RemoveState(this);
+                return;
+            }
 
             if (state.ProcessWrite(e))
             {
@@ -105,7 +109,11 @@ namespace ISRORCert.Network
 
         private void ProcessRecv(SocketAsyncEventArgs e)
         {
-            AsyncState state = e.UserToken as AsyncState;
+            if (e.UserToken is not AsyncState state)
+            {
+                m_server.RemoveState(this);
+                return;
+            }
 
             if (state.ProcessRead(e))
             {
@@ -209,6 +217,9 @@ namespace ISRORCert.Network
 
                 lock (m_write_buffers)
                 {
+                    if (m_current_write_buffer == null)
+                        return false;
+
                     m_current_write_buffer.Offset += e.BytesTransferred; // Update index
                     m_current_write_buffer.Count -= e.BytesTransferred; // Update count
 

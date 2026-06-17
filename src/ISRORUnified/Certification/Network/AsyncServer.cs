@@ -32,16 +32,18 @@ namespace ISRORCert.Network
             }
         }
 
-        private void DispatchAccept(object param)
+        private void DispatchAccept(object? param)
         {
-            SocketAsyncEventArgs e = (SocketAsyncEventArgs)param;
+            if (param is not SocketAsyncEventArgs e)
+                return;
 
             NetworkOnAccept(null, e);
         }
 
         private void ProcessAccept(SocketAsyncEventArgs e)
         {
-            AsyncToken token = (AsyncToken)e.UserToken;
+            if (e.UserToken is not AsyncToken token)
+                throw new InvalidOperationException("Missing async server token.");
 
             e.AcceptSocket = null;
 
@@ -51,11 +53,12 @@ namespace ISRORCert.Network
             }
         }
 
-        private void NetworkOnAccept(object sender, SocketAsyncEventArgs e)
+        private void NetworkOnAccept(object? sender, SocketAsyncEventArgs e)
         {
-            AsyncToken token = (AsyncToken)e.UserToken;
+            if (e.UserToken is not AsyncToken token)
+                throw new InvalidOperationException("Missing async server token.");
 
-            Socket socket = e.AcceptSocket;
+            Socket? socket = e.AcceptSocket;
 
             ProcessAccept(e); // Start the next accept asap.
 

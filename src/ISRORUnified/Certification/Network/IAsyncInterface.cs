@@ -8,7 +8,7 @@
 
         void OnDisconnect(AsyncContext context);
 
-        void OnError(AsyncContext context);
+        void OnError(AsyncContext? context);
 
         void OnTick(AsyncContext context);
     }

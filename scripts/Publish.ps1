@@ -118,6 +118,11 @@ $arguments += "/p:DebugSymbols=$(if ($KeepSymbols) { 'true' } else { 'false' })"
 $arguments += "/p:IsTransformWebConfigDisabled=$(if ($KeepIisWebConfig) { 'false' } else { 'true' })"
 $arguments += "/p:StaticWebAssetsEnabled=$(if ($KeepStaticWebAssets) { 'true' } else { 'false' })"
 
+if ($ReleaseZip) {
+    # MSBuild command-line property lists need escaped semicolons.
+    $arguments += "/p:NoWarn=CS8600%3BCS8602%3BCS8603%3BCS8618%3BCS8625"
+}
+
 Write-Host "Publishing $ProjectPath to $OutputPath..."
 Write-Host "Mode: $(if ($selfContainedValue) { 'self-contained single-file' } else { 'framework-dependent single-file' })"
 Clear-PublishOutput $OutputPath

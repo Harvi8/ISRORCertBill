@@ -11,8 +11,7 @@ namespace ISRORCert.Network
         {
             Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-            IPAddress address = null;
-            if (!IPAddress.TryParse(host, out address))
+            if (!IPAddress.TryParse(host, out var address))
             {
                 IPHostEntry host_entry = Dns.GetHostEntry(host);
                 address = host_entry.AddressList[0];
@@ -31,7 +30,8 @@ namespace ISRORCert.Network
 
         private void ProcessConnect(SocketAsyncEventArgs e)
         {
-            AsyncToken token = (AsyncToken)e.UserToken;
+            if (e.UserToken is not AsyncToken token)
+                throw new InvalidOperationException("Missing async client token.");
 
             if (!token.Socket.ConnectAsync(e))
             {
@@ -39,11 +39,12 @@ namespace ISRORCert.Network
             }
         }
 
-        private void NetworkOnConnect(object sender, SocketAsyncEventArgs e)
+        private void NetworkOnConnect(object? sender, SocketAsyncEventArgs e)
         {
-            AsyncToken token = (AsyncToken)e.UserToken;
+            if (e.UserToken is not AsyncToken token)
+                throw new InvalidOperationException("Missing async client token.");
 
-            Socket socket = e.ConnectSocket;
+            Socket? socket = e.ConnectSocket;
 
             if (socket == null) // The connection failed
             {
