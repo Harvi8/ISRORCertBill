@@ -26,8 +26,13 @@ BillingLog*.txt
 # Test and package output
 TestResults/
 [Bb]uild[Ll]og.*
+*.exe
+*.dll
 *.pdb
+*.deps.json
+*.runtimeconfig.json
 *.nupkg
+*.zip
 packages/
 
 # Publish output
